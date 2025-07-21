@@ -4,17 +4,7 @@
   "builds": [
     {
       "src": "dist/index.js",
-      "use": "@vercel/node",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "use": "@vercel/node"
     }
   ],
   "routes": [
@@ -38,10 +28,5 @@
   ],
   "env": {
     "NODE_ENV": "production"
-  },
-  "functions": {
-    "dist/index.js": {
-      "maxDuration": 30
-    }
   }
 } 
