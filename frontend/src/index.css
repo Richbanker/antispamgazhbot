@@ -1,0 +1,11 @@
+/* frontend/src/index.css */
+body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #f5f5f5;
+    color: #333;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  

@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # Telegram Bot Backend
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: telegram-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_PATH=/app/data/database.sqlite
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    ports:
+      - "3000:3000"
+    networks:
+      - bot-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('Health check')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - database-setup
+
+  # Frontend Panel
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: telegram-bot-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    environment:
+      - VITE_API_URL=http://bot:3000
+      - VITE_TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-GuardianGazhBot}
+    networks:
+      - bot-network
+    depends_on:
+      - bot
+
+  # Database initialization
+  database-setup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
+    container_name: telegram-bot-db-setup
+    volumes:
+      - ./data:/app/data
+    command: >
+      sh -c "
+        mkdir -p /app/data &&
+        if [ ! -f /app/data/database.sqlite ]; then
+          echo 'Creating initial database...' &&
+          cp /app/src/database.sqlite /app/data/database.sqlite 2>/dev/null || 
+          touch /app/data/database.sqlite
+        fi &&
+        echo 'Database ready'
+      "
+    networks:
+      - bot-network
+
+  # Nginx Reverse Proxy (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: telegram-bot-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - bot-network
+    depends_on:
+      - bot
+      - frontend
+    profiles:
+      - production
+
+networks:
+  bot-network:
+    driver: bridge
+
+volumes:
+  bot-data:
+    driver: local 
