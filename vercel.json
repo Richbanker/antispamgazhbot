@@ -1,32 +1,25 @@
 {
   "version": 2,
-  "name": "telegram-moderator-bot",
-  "builds": [
-    {
-      "src": "dist/index.js",
-      "use": "@vercel/node"
-    }
-  ],
   "routes": [
     {
-      "src": "/bot",
-      "dest": "/dist/index.js",
-      "methods": ["POST"]
+      "src": "/",
+      "dest": "/api/index.js"
     },
     {
-      "src": "/api/(.*)",
-      "dest": "/dist/index.js"
+      "src": "/api/bot",
+      "dest": "/api/bot.js"
+    },
+    {
+      "src": "/bot",
+      "dest": "/api/bot.js"
+    },
+    {
+      "src": "/api/health",
+      "dest": "/api/health.js"
     },
     {
       "src": "/health",
-      "dest": "/dist/index.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/dist/$1"
+      "dest": "/api/health.js"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 } 
