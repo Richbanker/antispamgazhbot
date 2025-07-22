@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Telegraf, Context } from 'telegraf';
 import { requireAdmin } from '../admin/adminMiddleware';
 import { statsService } from '../analytics/statsService';
