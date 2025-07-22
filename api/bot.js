@@ -1,5 +1,15 @@
 const { Telegraf } = require('telegraf');
 
+// Загружаем переменные окружения
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
+
+// Проверяем наличие BOT_TOKEN
+if (!process.env.BOT_TOKEN) {
+  console.error('BOT_TOKEN is not set in environment variables');
+}
+
 // Создаем бота
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
@@ -56,6 +66,14 @@ bot.catch((err, ctx) => {
 
 module.exports = async (req, res) => {
   try {
+    // Проверяем наличие токена
+    if (!process.env.BOT_TOKEN) {
+      return res.status(500).json({ 
+        error: 'Configuration error',
+        message: 'BOT_TOKEN not configured' 
+      });
+    }
+
     if (req.method === 'POST') {
       // Обработка webhook от Telegram
       await bot.handleUpdate(req.body);
@@ -66,14 +84,17 @@ module.exports = async (req, res) => {
         status: 'ok',
         message: 'Telegram Bot Webhook is ready',
         method: req.method,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        hasToken: !!process.env.BOT_TOKEN,
+        nodeEnv: process.env.NODE_ENV || 'development'
       });
     }
   } catch (error) {
     console.error('Webhook error:', error);
     res.status(500).json({ 
       error: 'Internal server error',
-      message: error.message 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }; 
