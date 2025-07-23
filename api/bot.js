@@ -1,7 +1,4 @@
 const { Telegraf } = require('telegraf');
-const fs = require('fs');
-const path = require('path');
-const Database = require('better-sqlite3');
 
 // Загружаем переменные окружения
 if (process.env.NODE_ENV !== 'production') {
@@ -13,35 +10,12 @@ if (!process.env.BOT_TOKEN) {
   console.error('BOT_TOKEN is not set in environment variables');
 }
 
-// Инициализируем базу данных
-const db = new Database('/tmp/database.sqlite');
-
-// Создаем таблицы
-db.prepare(`CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY,
-  username TEXT,
-  role TEXT DEFAULT 'newbie',
-  join_date TEXT,
-  messages_count INTEGER DEFAULT 0
-)`).run();
-
-db.prepare(`CREATE TABLE IF NOT EXISTS warnings (
-  user_id INTEGER PRIMARY KEY,
-  count INTEGER DEFAULT 0,
-  last_warn TEXT
-)`).run();
-
-db.prepare(`CREATE TABLE IF NOT EXISTS moderation_logs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  timestamp TEXT NOT NULL,
-  action TEXT NOT NULL,
-  user_id INTEGER NOT NULL,
-  username TEXT,
-  chat_id INTEGER NOT NULL,
-  reason TEXT NOT NULL,
-  message_text TEXT,
-  ai_confidence REAL
-)`).run();
+// Временное хранилище в памяти (для serverless)
+const memoryStorage = {
+  users: new Map(),
+  warnings: new Map(),
+  logs: []
+};
 
 // Сервис запрещенных слов
 class BadWordsService {
@@ -90,80 +64,68 @@ class BadWordsService {
 
 const badWordsService = new BadWordsService();
 
-// Сервис логирования
+// Сервис логирования (в памяти)
 const moderationLogService = {
-  async logAction(action, userId, chatId, reason, options = {}) {
+  logAction(action, userId, chatId, reason, options = {}) {
     const timestamp = new Date().toISOString();
-    try {
-      db.prepare(`
-        INSERT INTO moderation_logs 
-        (timestamp, action, user_id, username, chat_id, reason, message_text, ai_confidence)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        timestamp,
-        action,
-        userId,
-        options.username || null,
-        chatId,
-        reason,
-        options.messageText || null,
-        options.aiConfidence || null
-      );
-    } catch (error) {
-      console.error('Error saving moderation log:', error);
+    const logEntry = {
+      id: memoryStorage.logs.length + 1,
+      timestamp,
+      action,
+      userId,
+      username: options.username || null,
+      chatId,
+      reason,
+      messageText: options.messageText || null,
+      aiConfidence: options.aiConfidence || null
+    };
+    
+    memoryStorage.logs.push(logEntry);
+    
+    // Ограничиваем количество логов в памяти
+    if (memoryStorage.logs.length > 100) {
+      memoryStorage.logs = memoryStorage.logs.slice(-50);
     }
+    
     console.log(`📝 Moderation log: ${action} - User ${userId} (${options.username || 'unknown'}) - ${reason}`);
   },
 
-  async getRecentLogs(limit = 10, chatId) {
-    try {
-      let query = `
-        SELECT id, timestamp, action, user_id as userId, username, chat_id as chatId, 
-               reason, message_text as messageText, ai_confidence as aiConfidence
-        FROM moderation_logs
-      `;
-      
-      const params = [];
-      
-      if (chatId) {
-        query += ' WHERE chat_id = ?';
-        params.push(chatId);
-      }
-      
-      query += ' ORDER BY timestamp DESC LIMIT ?';
-      params.push(limit);
-
-      return db.prepare(query).all(...params);
-    } catch (error) {
-      console.error('Error fetching moderation logs:', error);
-      return [];
+  getRecentLogs(limit = 10, chatId) {
+    let logs = [...memoryStorage.logs];
+    
+    if (chatId) {
+      logs = logs.filter(log => log.chatId === chatId);
     }
+    
+    return logs.slice(-limit).reverse();
   }
 };
 
-// Сервис пользователей
+// Сервис пользователей (в памяти)
 const userService = {
-  async ensureUser(userId, username) {
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-    if (!user) {
-      db.prepare('INSERT INTO users (id, username, role, join_date, messages_count) VALUES (?, ?, ?, ?, 0)')
-        .run(userId, username, 'newbie', new Date().toISOString());
+  ensureUser(userId, username) {
+    if (!memoryStorage.users.has(userId)) {
+      memoryStorage.users.set(userId, {
+        id: userId,
+        username,
+        role: 'newbie',
+        joinDate: new Date().toISOString(),
+        messagesCount: 0
+      });
     }
   },
 
-  async addWarning(userId) {
-    const now = new Date().toISOString();
-    const warn = db.prepare('SELECT * FROM warnings WHERE user_id = ?').get(userId);
-    if (!warn) {
-      db.prepare('INSERT INTO warnings (user_id, count, last_warn) VALUES (?, 1, ?)').run(userId, now);
-    } else {
-      db.prepare('UPDATE warnings SET count = count + 1, last_warn = ? WHERE user_id = ?').run(now, userId);
-    }
+  addWarning(userId) {
+    const current = memoryStorage.warnings.get(userId) || { count: 0, lastWarn: null };
+    const updated = {
+      count: current.count + 1,
+      lastWarn: new Date().toISOString()
+    };
+    memoryStorage.warnings.set(userId, updated);
   },
 
-  async getWarnings(userId) {
-    const result = db.prepare('SELECT count, last_warn FROM warnings WHERE user_id = ?').get(userId);
-    return result || { count: 0, last_warn: null };
+  getWarnings(userId) {
+    return memoryStorage.warnings.get(userId) || { count: 0, lastWarn: null };
   }
 };
 
@@ -236,7 +198,7 @@ if (process.env.BOT_TOKEN) {
               { parse_mode: 'HTML' }
             );
             
-            await moderationLogService.logAction(
+            moderationLogService.logAction(
               'badword_added',
               ctx.from.id,
               ctx.chat.id,
@@ -265,7 +227,7 @@ if (process.env.BOT_TOKEN) {
               { parse_mode: 'HTML' }
             );
             
-            await moderationLogService.logAction(
+            moderationLogService.logAction(
               'badword_removed',
               ctx.from.id,
               ctx.chat.id,
@@ -312,10 +274,10 @@ if (process.env.BOT_TOKEN) {
       
       if (!chatId) return;
 
-      const logs = await moderationLogService.getRecentLogs(limit, chatId);
+      const logs = moderationLogService.getRecentLogs(limit, chatId);
       
       if (logs.length === 0) {
-        await ctx.reply('📋 Логи модерации пусты.');
+        await ctx.reply('📋 Логи модерации пусты (данные в памяти сессии).');
         return;
       }
 
@@ -338,7 +300,7 @@ if (process.env.BOT_TOKEN) {
         message += `📝 ${log.reason}\n\n`;
       }
 
-      message += `💡 <i>Используйте</i> <code>/modlog [число]</code> <i>для показа другого количества записей</i>`;
+      message += `💡 <i>Логи хранятся в памяти текущей сессии</i>`;
 
       await ctx.reply(message, { parse_mode: 'HTML' });
     } catch (error) {
@@ -349,7 +311,7 @@ if (process.env.BOT_TOKEN) {
 
   // Тестовая команда
   bot.command('test_moderation', async (ctx) => {
-    await ctx.reply('✅ Команды модерации работают! Система v2.0.0 активна.');
+    await ctx.reply('✅ Команды модерации работают! Система v2.0.0 активна (Memory Storage).');
   });
 
   // Обработка сообщений с проверкой запрещенных слов
@@ -374,11 +336,11 @@ if (process.env.BOT_TOKEN) {
         await ctx.deleteMessage();
 
         // Добавляем предупреждение
-        await userService.addWarning(userId);
-        const warnings = await userService.getWarnings(userId);
+        userService.addWarning(userId);
+        const warnings = userService.getWarnings(userId);
 
         // Логируем действие
-        await moderationLogService.logAction(
+        moderationLogService.logAction(
           'message_deleted',
           userId,
           chatId,
@@ -412,7 +374,7 @@ if (process.env.BOT_TOKEN) {
               until_date: until
             });
 
-            await moderationLogService.logAction(
+            moderationLogService.logAction(
               'user_muted',
               userId,
               chatId,
@@ -454,8 +416,8 @@ if (process.env.BOT_TOKEN) {
         '🤖 *Добро пожаловать в АнтиСпам Бот v2.0!*\n\n' +
         '✅ Бот активен и готов к работе\n' +
         '🛡️ Улучшенная система модерации\n' +
-        '📊 AI-антиспам и аналитика\n' +
-        '🚫 Управление запрещенными словами\n\n' +
+        '📊 Управление запрещенными словами\n' +
+        '💾 Memory storage (serverless)\n\n' +
         '/help - список всех команд', 
         { parse_mode: 'Markdown' }
       );
@@ -472,26 +434,75 @@ if (process.env.BOT_TOKEN) {
 🔹 *Основные:*
 /start - Запуск бота
 /help - Эта справка
-/stats - Статистика чата
-/status - Статус системы
+/test_moderation - Тест системы v2.0
 
 🔹 *Модерация (админы):*
 /badwords - Управление запрещенными словами
 /badwords list - Показать список слов
 /badwords add <слово> - Добавить слово
 /badwords remove <слово> - Удалить слово
-/modlog - Логи модерации
-/test_moderation - Тест системы v2.0
+/modlog - Логи модерации (в памяти)
 
 🔹 *Информация:*
 /rules - Правила чата
 /about - О боте
 
-*Статус:* ✅ Активен (Vercel v2.0)
-*Версия:* 2.0.0 - Система модерации
+*Статус:* ✅ Активен (Vercel Serverless v2.0)
+*Версия:* 2.0.0 - Memory Storage
       `, { parse_mode: 'Markdown' });
     } catch (error) {
       console.error('Help command error:', error);
+    }
+  });
+
+  bot.command('rules', async (ctx) => {
+    try {
+      await ctx.reply(`
+📋 *Правила чата:*
+
+1️⃣ Без спама и рекламы
+2️⃣ Уважительное общение
+3️⃣ Запрещен флуд
+4️⃣ Без оскорблений
+5️⃣ По теме чата
+
+⚠️ *За нарушения:*
+• Предупреждение (автоматически)
+• Временная блокировка (после 3 предупреждений)
+• Исключение из чата
+
+🤖 Модерация автоматическая v2.0
+      `, { parse_mode: 'Markdown' });
+    } catch (error) {
+      console.error('Rules command error:', error);
+    }
+  });
+
+  bot.command('about', async (ctx) => {
+    try {
+      await ctx.reply(`
+🤖 *АнтиСпам Модератор Бот v2.0*
+
+🔹 *Функции:*
+• Управление запрещенными словами
+• Автоматическое удаление спама
+• Система предупреждений и мутов
+• Логирование действий модерации
+• Приветствие новых участников
+
+🔹 *Технологии:*
+• Node.js + Telegraf
+• Vercel Serverless
+• Memory Storage (без БД)
+• HTML форматирование
+
+🔹 *Версия:* 2.0.0
+🔹 *Статус:* Активен 24/7
+
+Разработано для эффективной модерации чатов
+      `, { parse_mode: 'Markdown' });
+    } catch (error) {
+      console.error('About command error:', error);
     }
   });
 
@@ -501,7 +512,7 @@ if (process.env.BOT_TOKEN) {
       const newMembers = ctx.message.new_chat_members;
       for (const member of newMembers) {
         if (!member.is_bot) {
-          await userService.ensureUser(member.id, member.username || '');
+          userService.ensureUser(member.id, member.username || '');
           
           await ctx.reply(
             `🎉 *Добро пожаловать, ${member.first_name}!*\n\n` +
@@ -572,19 +583,26 @@ module.exports = async (req, res) => {
         method: req.method,
         timestamp: new Date().toISOString(),
         version: '2.0.0',
+        storage: 'memory',
         features: [
-          'AI Moderation System',
           'Bad Words Management',
+          'Auto Message Deletion',
+          'Warning System',
+          'Auto Mute/Ban',
           'Moderation Logging',
-          'Admin Commands',
-          'Auto Mute/Ban System'
+          'Admin Commands'
         ],
         config: {
           hasToken: !!process.env.BOT_TOKEN,
           aiModeration: process.env.AI_MODERATION === 'true',
           maxWarnings: process.env.MAX_WARNINGS || '3',
           muteDuration: process.env.MUTE_DURATION || '600',
-          badWordsCount: badWordsService.getCount()
+          badWordsCount: badWordsService.getCount(),
+          memoryStats: {
+            users: memoryStorage.users.size,
+            warnings: memoryStorage.warnings.size,
+            logs: memoryStorage.logs.length
+          }
         }
       };
       
