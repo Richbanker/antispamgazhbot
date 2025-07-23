@@ -14,9 +14,29 @@ NODE_ENV=production
 ### Дополнительные переменные (опционально):
 
 ```env
+# База данных
 DATABASE_PATH=/tmp/database.sqlite
+DATABASE_URL=sqlite:///tmp/database.sqlite
+
+# Администраторы
 ADMIN_IDS=123456789,987654321
+
+# Webhook
 WEBHOOK_URL=https://your-project.vercel.app/bot
+
+# AI модерация (НОВОЕ!)
+AI_MODERATION=true
+AI_PROVIDER=openai
+AI_API_KEY=your_openai_api_key_here
+AI_MODEL=gpt-3.5-turbo
+
+# Настройки модерации (НОВОЕ!)
+MAX_WARNINGS=3
+MUTE_DURATION=600
+
+# Устаревшие настройки (для совместимости)
+USE_AI_ANTISPAM=false
+AI_MODE=simple
 ```
 
 ## 📋 Пошаговая инструкция:
@@ -30,6 +50,12 @@ WEBHOOK_URL=https://your-project.vercel.app/bot
    - Перейдите в Settings → Environment Variables
    - Добавьте `BOT_TOKEN` со значением вашего Telegram бота
    - Добавьте `NODE_ENV=production`
+   - **ДЛЯ AI МОДЕРАЦИИ (опционально):**
+     - `AI_MODERATION=true`
+     - `AI_PROVIDER=openai`
+     - `AI_API_KEY=sk-your-openai-key`
+     - `MAX_WARNINGS=3`
+     - `MUTE_DURATION=600`
 
 3. **Установите webhook**
    ```bash
@@ -42,6 +68,11 @@ WEBHOOK_URL=https://your-project.vercel.app/bot
    - `https://your-project.vercel.app/` - главная страница
    - `https://your-project.vercel.app/health` - статус API
    - `https://your-project.vercel.app/bot` - webhook бота
+
+5. **Протестируйте модерацию** (после настройки AI_MODERATION)
+   - Напишите в чат запрещенное слово из списка
+   - Используйте команды `/badwords list`, `/modlog`
+   - Проверьте работу AI-анализа спама
 
 ## ❗ Важно
 
