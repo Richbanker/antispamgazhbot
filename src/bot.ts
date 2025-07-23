@@ -47,8 +47,21 @@ async function startBot() {
     setupCaptcha(bot);
     setupFloodControl(bot);
     
+    // ТЕСТОВАЯ КОМАНДА для диагностики
+    console.log('🧪 Registering test command...');
+    bot.command('test_moderation', async (ctx) => {
+      await ctx.reply('✅ Команды модерации работают! Система v2.0.0 активна.');
+    });
+    
     // Настраиваем команды
-    setupModerationCommands(bot); // Новые команды модерации
+    console.log('📝 Registering moderation commands...');
+    try {
+      setupModerationCommands(bot); // Новые команды модерации
+      console.log('✅ Moderation commands registered successfully');
+    } catch (error) {
+      console.error('❌ Error registering moderation commands:', error);
+    }
+    
     banCommand(bot);
     muteCommand(bot);
     warnCommand(bot);
