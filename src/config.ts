@@ -26,4 +26,10 @@ export const config = {
   SLACK_WEBHOOK_URL: process.env.SLACK_WEBHOOK_URL || '',
   DISCORD_WEBHOOK_URL: process.env.DISCORD_WEBHOOK_URL || '',
   ENABLE_AUTO_RESPONDER: process.env.ENABLE_AUTO_RESPONDER === 'true',
+  
+  // Новые параметры для улучшенной модерации
+  AI_MODERATION: process.env.AI_MODERATION === 'true',
+  AI_PROVIDER: process.env.AI_PROVIDER || 'openai', // openai или claude
+  MAX_WARNINGS: Number(process.env.MAX_WARNINGS) || 3,
+  MUTE_DURATION: Number(process.env.MUTE_DURATION) || 600, // секунды (10 минут по умолчанию)
 }; 

@@ -4,6 +4,8 @@ import { setupAntiSpam } from './middlewares/antiSpam';
 import { setupCaptcha } from './middlewares/captcha';
 import { setupFloodControl } from './middlewares/floodControl';
 import { setupAIAntiSpam } from './middlewares/aiAntiSpam';
+import { setupAIModeration } from './middlewares/aiModeration';
+import { setupModerationCommands } from './commands/moderation';
 import { banCommand } from './commands/ban';
 import { muteCommand } from './commands/mute';
 import { warnCommand } from './commands/warn';
@@ -11,6 +13,8 @@ import { unmuteCommand } from './commands/unmute';
 import { userService } from './services/userService';
 import { rolesCommands } from './commands/roles';
 import { roleService } from './roles/roleService';
+import { badWordsService } from './services/badWordsService';
+import { moderationLogService } from './services/moderationLogService';
 
 // Создаем бота
 const bot = new Telegraf(process.env.BOT_TOKEN!);
@@ -34,13 +38,17 @@ async function startBot() {
     console.log(`🤖 Bot name: ${botInfo.first_name}`);
     console.log(`🆔 Bot ID: ${botInfo.id}`);
     
-    // Настраиваем middleware
-    setupAIAntiSpam(bot);
-    setupAntiSpam(bot);
+    // Инициализируем сервисы
+    console.log('🔧 Initializing services...');
+    console.log(`📋 Bad words loaded: ${badWordsService.getCount()} words`);
+    
+    // Настраиваем middleware (новый улучшенный middleware заменяет старые)
+    setupAIModeration(bot); // Новый улучшенный middleware
     setupCaptcha(bot);
     setupFloodControl(bot);
     
     // Настраиваем команды
+    setupModerationCommands(bot); // Новые команды модерации
     banCommand(bot);
     muteCommand(bot);
     warnCommand(bot);
