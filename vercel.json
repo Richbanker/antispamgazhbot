@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "npm run build && cd frontend && npm run build",
-  "outputDirectory": "frontend/dist",
+  "buildCommand": "npm run build:clean && cd frontend && npm run build",
+  "outputDirectory": "frontend/dist", 
   "installCommand": "npm install && cd frontend && npm install && cd ../api && npm install",
   "functions": {
     "api/index.js": {
