@@ -31,6 +31,7 @@ jobs:
         
     - name: Create .env file for testing
       run: |
+        mkdir -p data
         echo "BOT_TOKEN=${{ secrets.BOT_TOKEN || '1234567890:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' }}" > .env
         echo "DATABASE_PATH=./data/bot.db" >> .env
         echo "PORT=3000" >> .env

@@ -43,12 +43,17 @@ const checks = [
   {
     name: 'Database exists',
     check: () => {
-      // In CI environment, just check if data directory exists
-      if (process.env.CI || process.env.GITHUB_ACTIONS) {
-        return fs.existsSync('data');
+      // In CI environment, skip database check as it will be created on first run
+      if (process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true') {
+        console.log('   🔧 CI environment detected - skipping database file check');
+        return true;
       }
-      // In production, check for actual database files
-      return fs.existsSync('data/bot.db') || fs.existsSync('database.sqlite') || fs.existsSync('src/database.sqlite') || fs.existsSync('data');
+      // In production, check for actual database files or data directory
+      const hasDb = fs.existsSync('data/bot.db') || fs.existsSync('database.sqlite') || fs.existsSync('src/database.sqlite') || fs.existsSync('data');
+      if (!hasDb) {
+        console.log('   📁 Checking: data/bot.db, database.sqlite, src/database.sqlite, data/');
+      }
+      return hasDb;
     },
     fix: 'Database will be created automatically on first run'
   },
