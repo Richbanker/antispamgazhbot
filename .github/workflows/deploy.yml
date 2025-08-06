@@ -25,12 +25,12 @@ jobs:
         
     - name: Install dependencies
       run: |
-        npm ci
-        cd frontend && npm ci
+        npm install
+        npm run build
+        cd frontend && npm install
         
     - name: Build project
       run: |
-        npm run build
         cd frontend && npm run build
         
     - name: Run production check
