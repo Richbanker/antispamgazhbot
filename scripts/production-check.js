@@ -42,7 +42,14 @@ const checks = [
   },
   {
     name: 'Database exists',
-    check: () => fs.existsSync('data/bot.db') || fs.existsSync('database.sqlite') || fs.existsSync('src/database.sqlite') || fs.existsSync('data'),
+    check: () => {
+      // In CI environment, just check if data directory exists
+      if (process.env.CI || process.env.GITHUB_ACTIONS) {
+        return fs.existsSync('data');
+      }
+      // In production, check for actual database files
+      return fs.existsSync('data/bot.db') || fs.existsSync('database.sqlite') || fs.existsSync('src/database.sqlite') || fs.existsSync('data');
+    },
     fix: 'Database will be created automatically on first run'
   },
   {

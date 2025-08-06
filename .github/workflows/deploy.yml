@@ -41,4 +41,7 @@ jobs:
         cd frontend && npm run build
         
     - name: Run production check
-      run: npm run check:production 
+      run: npm run check:production
+      env:
+        CI: true
+        GITHUB_ACTIONS: true 
