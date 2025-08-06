@@ -18,8 +18,8 @@ const checks = [
   },
   {
     name: '.env file exists',
-    check: () => fs.existsSync('.env'),
-    fix: 'Copy .env.example to .env and fill in your values'
+    check: () => fs.existsSync('.env') || fs.existsSync('env.example'),
+    fix: 'Copy env.example to .env and fill in your values'
   },
   {
     name: 'BOT_TOKEN configured',
@@ -42,7 +42,7 @@ const checks = [
   },
   {
     name: 'Database exists',
-    check: () => fs.existsSync('database.sqlite') || fs.existsSync('src/database.sqlite'),
+    check: () => fs.existsSync('data/bot.db') || fs.existsSync('database.sqlite') || fs.existsSync('src/database.sqlite') || fs.existsSync('data'),
     fix: 'Database will be created automatically on first run'
   },
   {
