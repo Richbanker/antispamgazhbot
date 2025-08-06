@@ -29,6 +29,13 @@ jobs:
         npm run build
         cd frontend && npm install
         
+    - name: Create .env file for testing
+      run: |
+        echo "BOT_TOKEN=${{ secrets.BOT_TOKEN || '1234567890:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' }}" > .env
+        echo "DATABASE_PATH=./data/bot.db" >> .env
+        echo "PORT=3000" >> .env
+        echo "NODE_ENV=production" >> .env
+        
     - name: Build project
       run: |
         cd frontend && npm run build
