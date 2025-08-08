@@ -2,7 +2,9 @@ param([string]$BotToken)
 
 Write-Host "FIXING WEBHOOK NOW..." -ForegroundColor Red
 
-$webhookUrl = "https://antispamgazhbot.vercel.app/bot"
+$baseUrl = "https://antispamgazhbot.vercel.app"
+$path = "/bot"
+$webhookUrl = "$baseUrl$path"
 
 # Delete old webhook
 try {
@@ -16,11 +18,8 @@ try {
 Start-Sleep -Seconds 2
 
 # Set new webhook
-$body = @{
-    url = $webhookUrl
-    drop_pending_updates = $true
-    allowed_updates = @('message', 'callback_query', 'chat_member')
-} | ConvertTo-Json
+$payload = @{ url = $webhookUrl; drop_pending_updates = $true; allowed_updates = @('message','callback_query','chat_member') }
+$body = $payload | ConvertTo-Json
 
 try {
     $setUrl = "https://api.telegram.org/bot$BotToken/setWebhook"

@@ -2,7 +2,9 @@
 Write-Host "WEBHOOK UPDATE FOR @GuardianGazhBot" -ForegroundColor Red
 Write-Host "====================================" -ForegroundColor Red
 
-$webhookUrl = "https://antispamgazhbot.vercel.app/bot"
+$baseUrl = "https://antispamgazhbot.vercel.app"
+$path = "/bot"
+$webhookUrl = "$baseUrl$path"
 Write-Host "Webhook URL: $webhookUrl" -ForegroundColor Cyan
 
 Write-Host "Enter your bot token (from @BotFather):" -ForegroundColor Yellow
@@ -30,11 +32,10 @@ Start-Sleep -Seconds 2
 
 Write-Host "Setting new webhook..." -ForegroundColor Yellow
 
-$body = @{
-    url = $webhookUrl
-    drop_pending_updates = $true
-    allowed_updates = @('message', 'callback_query', 'chat_member')
-} | ConvertTo-Json
+$secret = Read-Host "Optional WEBHOOK_SECRET (press Enter to skip)"
+$payload = @{ url = $webhookUrl; drop_pending_updates = $true; allowed_updates = @('message','callback_query','chat_member') }
+if ($secret -and $secret.Trim() -ne "") { $payload.secret_token = $secret }
+$body = $payload | ConvertTo-Json
 
 try {
     $setUrl = "https://api.telegram.org/bot$botToken/setWebhook"

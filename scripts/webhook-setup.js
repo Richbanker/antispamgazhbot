@@ -4,8 +4,11 @@ const https = require('https');
 const fs = require('fs');
 require('dotenv').config();
 
-const BOT_TOKEN = process.env.BOT_TOKEN;
-const WEBHOOK_URL = process.env.WEBHOOK_URL;
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN;
+const BASE_URL = process.env.APP_BASE_URL || process.env.PUBLIC_URL || process.env.BASE_URL || '';
+const WEBHOOK_PATH = process.env.WEBHOOK_PATH || '/bot';
+const WEBHOOK_URL = process.env.WEBHOOK_URL || (BASE_URL ? `${BASE_URL.replace(/\/$/, '')}${WEBHOOK_PATH}` : '');
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || '';
 
 if (!BOT_TOKEN) {
   console.error('❌ BOT_TOKEN not found in .env file');
@@ -13,8 +16,7 @@ if (!BOT_TOKEN) {
 }
 
 if (!WEBHOOK_URL) {
-  console.error('❌ WEBHOOK_URL not found in .env file');
-  console.log('💡 Set WEBHOOK_URL=https://yourdomain.com/bot in .env');
+  console.error('❌ WEBHOOK_URL not found. Provide WEBHOOK_URL or APP_BASE_URL+WEBHOOK_PATH in .env');
   process.exit(1);
 }
 
@@ -25,7 +27,8 @@ const setWebhook = () => {
   const data = JSON.stringify({
     url: WEBHOOK_URL,
     allowed_updates: ['message', 'callback_query', 'chat_member'],
-    drop_pending_updates: true
+    drop_pending_updates: true,
+    secret_token: WEBHOOK_SECRET || undefined
   });
 
   const options = {

@@ -1,47 +1,14 @@
 {
   "version": 2,
-  "buildCommand": "npm run build:clean && cd frontend && npm run build",
-  "outputDirectory": "frontend/dist", 
-  "installCommand": "npm install && cd frontend && npm install && cd ../api && npm install",
   "functions": {
-    "api/index.js": {
-      "maxDuration": 30
-    },
-    "api/bot.js": {
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "api/health.js": {
-      "maxDuration": 10
-    }
+    "api/*.js": { "runtime": "nodejs20.x", "maxDuration": 60 }
   },
-  "rewrites": [
-    {
-      "source": "/bot",
-      "destination": "/api/bot"
-    },
-    {
-      "source": "/health", 
-      "destination": "/api/health"
-    }
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/bot", "dest": "/api/bot" },
+    { "src": "/health", "dest": "/api/health" }
   ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options", 
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        }
-      ]
-    }
-  ]
-} 
+  "installCommand": "npm install && cd frontend && npm install && cd ../api && npm install",
+  "buildCommand": "npm run build:clean && cd frontend && npm run build",
+  "outputDirectory": "frontend/dist"
+}

@@ -1,13 +1,16 @@
 param(
     [Parameter(Mandatory=$true)]
-    [string]$BotToken
+    [string]$BotToken,
+    [string]$BaseUrl = "https://antispamgazhbot.vercel.app",
+    [string]$Path = "/bot",
+    [string]$Secret = ""
 )
 
 # Non-interactive webhook update script
 Write-Host "WEBHOOK UPDATE FOR @GuardianGazhBot" -ForegroundColor Red
 Write-Host "====================================" -ForegroundColor Red
 
-$webhookUrl = "https://antispamgazhbot.vercel.app/bot"
+$webhookUrl = "$BaseUrl$Path"
 Write-Host "Webhook URL: $webhookUrl" -ForegroundColor Cyan
 
 Write-Host "Using provided bot token..." -ForegroundColor Yellow
@@ -32,11 +35,9 @@ Start-Sleep -Seconds 2
 
 Write-Host "Step 2: Setting new webhook..." -ForegroundColor Yellow
 
-$body = @{
-    url = $webhookUrl
-    drop_pending_updates = $true
-    allowed_updates = @('message', 'callback_query', 'chat_member')
-} | ConvertTo-Json
+$payload = @{ url = $webhookUrl; drop_pending_updates = $true; allowed_updates = @('message','callback_query','chat_member') }
+if ($Secret -and $Secret.Trim() -ne "") { $payload.secret_token = $Secret }
+$body = $payload | ConvertTo-Json
 
 try {
     $setUrl = "https://api.telegram.org/bot$BotToken/setWebhook"

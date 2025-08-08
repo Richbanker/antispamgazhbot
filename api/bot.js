@@ -1,13 +1,17 @@
 const { Telegraf } = require('telegraf');
 
-// Загружаем переменные окружения
+// Загружаем переменные окружения (локально)
 if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
+  try { require('dotenv').config(); } catch (_) {}
 }
 
-// Проверяем наличие BOT_TOKEN
-if (!process.env.BOT_TOKEN) {
-  console.error('BOT_TOKEN is not set in environment variables');
+// Поддержка обоих имен переменных
+const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN;
+const WEBHOOK_SECRET = (process.env.WEBHOOK_SECRET || '').trim();
+
+// Проверяем наличие токена
+if (!TELEGRAM_TOKEN) {
+  console.error('Telegram bot token is not set (TELEGRAM_BOT_TOKEN or BOT_TOKEN)');
 }
 
 // Временное хранилище в памяти (для serverless)
@@ -131,8 +135,8 @@ const userService = {
 
 // Создаем бота
 let bot;
-if (process.env.BOT_TOKEN) {
-  bot = new Telegraf(process.env.BOT_TOKEN);
+if (TELEGRAM_TOKEN) {
+  bot = new Telegraf(TELEGRAM_TOKEN);
   
   // Конфигурация модерации
   const config = {
@@ -543,16 +547,16 @@ if (process.env.BOT_TOKEN) {
   });
 
 } else {
-  console.warn('Bot not initialized: BOT_TOKEN missing');
+  console.warn('Bot not initialized: TELEGRAM_BOT_TOKEN/BOT_TOKEN missing');
 }
 
 module.exports = async (req, res) => {
   try {
-    if (!process.env.BOT_TOKEN) {
-      console.error('BOT_TOKEN not configured');
+    if (!TELEGRAM_TOKEN) {
+      console.error('Telegram token not configured');
       return res.status(500).json({ 
         error: 'Configuration error',
-        message: 'BOT_TOKEN not configured',
+        message: 'TELEGRAM_BOT_TOKEN/BOT_TOKEN not configured',
         timestamp: new Date().toISOString()
       });
     }
@@ -567,15 +571,18 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'POST') {
-      console.log('Received webhook request:', {
-        timestamp: new Date().toISOString()
-      });
-      
-      await bot.handleUpdate(req.body);
-      res.status(200).json({ 
-        ok: true,
-        timestamp: new Date().toISOString() 
-      });
+      // Валидация секретного токена, если задан
+      if (WEBHOOK_SECRET) {
+        const headerSecret = req.headers['x-telegram-bot-api-secret-token'];
+        if (!headerSecret || headerSecret !== WEBHOOK_SECRET) {
+          console.warn('Invalid or missing webhook secret token');
+          return res.status(401).json({ ok: false, error: 'invalid secret' });
+        }
+      }
+
+      // Быстрый ответ (не ждём выполнения хэндлеров), важно для serverless (<10s)
+      res.status(200).json({ ok: true, received: true, ts: new Date().toISOString() });
+      bot.handleUpdate(req.body).catch((err) => console.error('handleUpdate error:', err));
     } else {
       const botInfo = {
         status: 'ok',
