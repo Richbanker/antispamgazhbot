@@ -1,8 +1,6 @@
 {
   "version": 2,
-  "functions": {
-    "api/*.js": { "runtime": "@vercel/node@3.0.31", "maxDuration": 60 }
-  },
+  "functions": {},
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/bot", "dest": "/api/bot" },
