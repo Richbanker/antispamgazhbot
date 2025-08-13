@@ -212,37 +212,70 @@ async function startBot() {
     // Запускаем бота
     const webhookUrl = process.env.WEBHOOK_URL;
     const port = parseInt(process.env.PORT || '3000');
-    
-    if (webhookUrl) {
-      // Webhook mode для продакшена
-      console.log('🌐 Starting in webhook mode...');
-      
-      // Устанавливаем webhook
-      await bot.telegram.setWebhook(webhookUrl, {
-        drop_pending_updates: true, // Очищаем старые обновления
-        allowed_updates: ['message', 'callback_query', 'chat_member'] // Только нужные типы
-      });
-      
-      // Запускаем webhook сервер
-      await bot.launch({
-        webhook: {
-          domain: webhookUrl,
-          port: port,
-          hookPath: '/bot' // Путь для webhook
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    async function sleep(ms: number) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function launchWebhookWithRetry(maxAttempts: number) {
+      let attempt = 0;
+      while (attempt < maxAttempts) {
+        attempt++;
+        try {
+          // Разбираем WEBHOOK_URL: поддерживаем как полный URL, так и домен
+          let domain = webhookUrl!;
+          let hookPath = '/bot';
+          try {
+            const url = new URL(webhookUrl!);
+            domain = url.host;
+            hookPath = url.pathname && url.pathname !== '/' ? url.pathname : '/bot';
+          } catch (_) {
+            domain = webhookUrl!.replace(/^https?:\/\//, '').replace(/\/$/, '');
+          }
+
+          await bot.launch({
+            webhook: {
+              domain,
+              port: port,
+              hookPath
+            }
+          });
+          console.log('✅ Bot started successfully!');
+          console.log('📡 Mode: Webhook');
+          console.log(`🌐 Webhook domain: ${domain}`);
+          console.log(`🛣️ Hook path: ${hookPath}`);
+          console.log(`🔌 Port: ${port}`);
+          return;
+        } catch (error: any) {
+          const code = error?.response?.error_code || error?.code;
+          const retryAfter = error?.parameters?.retry_after || 1;
+          console.error(`Webhook launch failed (attempt ${attempt}/${maxAttempts}):`, error?.message || error);
+          if (code === 429 && attempt < maxAttempts) {
+            console.log(`⏳ Rate limited. Retrying in ${retryAfter}s...`);
+            await sleep(retryAfter * 1000);
+            continue;
+          }
+          throw error;
         }
-      });
-      
-      console.log('✅ Bot started successfully!');
-      console.log('📡 Mode: Webhook');
-      console.log(`🌐 Webhook URL: ${webhookUrl}`);
-      console.log(`🔌 Port: ${port}`);
-      console.log(`📍 Webhook path: /bot`);
+      }
+      throw new Error('Exceeded max webhook launch attempts');
+    }
+
+    if (webhookUrl && isProduction) {
+      console.log('🌐 Starting in webhook mode...');
+      try {
+        await launchWebhookWithRetry(5);
+      } catch (err) {
+        console.warn('⚠️ Falling back to polling due to webhook errors.');
+        console.log('🔄 Starting in polling mode...');
+        await bot.launch();
+        console.log('✅ Bot started successfully!');
+        console.log('📡 Mode: Long Polling');
+      }
     } else {
-      // Polling mode для разработки
       console.log('🔄 Starting in polling mode...');
-      
       await bot.launch();
-      
       console.log('✅ Bot started successfully!');
       console.log('📡 Mode: Long Polling');
     }
