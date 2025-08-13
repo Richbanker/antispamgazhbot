@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "functions": {},
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/bot", "dest": "/api/bot" },
