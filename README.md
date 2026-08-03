@@ -1,626 +1,134 @@
-# 🤖 Telegram Moderator Bot
+# Telegram Moderator Bot
 
-Продвинутый Telegram-бот для модерации чатов с ИИ-анализом спама и React-панелью управления.
+Система модерации Telegram-чатов на TypeScript: бот на Telegraf, API на Express и отдельная React-панель. Проект объединяет правила антиспама, предупреждения и ограничения пользователей, аналитику, отчёты и опциональную проверку сообщений через OpenAI API.
 
-## ✨ Возможности
+## Основные возможности
 
-### 🛡️ Модерация
-- **ИИ Анти-спам** - Нейросеть для обнаружения спама и рекламы
-- **Флуд-контроль** - Защита от массовых сообщений
-- **Система предупреждений** - Автоматические варны и баны
-- **Капча для новичков** - Проверка новых участников
-- **Роли пользователей** - VIP, Verified, Active, Newbie
+- фильтрация стоп-слов и ссылок;
+- flood control и captcha для новых участников;
+- предупреждения, mute, ban и управление ролями;
+- журналирование действий модерации;
+- команды администратора и аналитика активности;
+- экспорт отчётов в Excel и PDF;
+- интеграция с Google Sheets и внешними webhook;
+- опциональная AI-классификация `normal`, `spam`, `scam` и `offtopic`;
+- React-панель со страницами dashboard, analytics, users и settings;
+- long polling для разработки и webhook для deployment.
 
-### 📊 Аналитика
-- **Детальная статистика** - Графики активности и угроз
-- **Экспорт данных** - PDF, Excel отчёты
-- **Мониторинг системы** - CPU, память, производительность
+AI-модерация отключается при отсутствии конфигурации. Базовые правила модерации продолжают работать без внешней AI-службы.
 
-### 🎛️ Панель управления
-- **Современный UI** - Киберпанк дизайн с анимациями
-- **Управление пользователями** - Поиск, фильтры, действия
-- **Гибкие настройки** - Конфигурация всех параметров
-- **Русский интерфейс** - Полная локализация
+## Технологический стек
 
-## 🚀 Быстрый запуск
+### Bot и API
 
-### Предварительные требования
+- Node.js 20, TypeScript;
+- Telegraf и Express;
+- SQLite;
+- Axios;
+- ExcelJS, PDFKit, Chart.js;
+- Google APIs;
+- PM2.
 
-- **Node.js 20.x LTS** (рекомендуется использовать nvm)
-- **npm 10+**
-- **Docker** (для контейнерного деплоя)
-- **Telegram Bot Token** (получить у @BotFather)
-- **Домен с SSL** (для webhook режима)
+### Панель управления
 
-### 1. Установка Node.js
+- React 18, TypeScript;
+- React Router;
+- Vite и Tailwind CSS;
+- Chart.js.
 
-```bash
-# Используя nvm (рекомендуется)
-nvm install 20
-nvm use 20
+### Инфраструктура
 
-# Проверка версии
-node -v  # должно быть v20.x.x
-npm -v   # должно быть 10.x.x
+- Docker и Docker Compose;
+- Nginx;
+- GitHub Actions;
+- Vercel-конфигурация для serverless API и frontend.
+
+## Архитектура
+
+```text
+Telegram
+   │
+   ▼
+Telegraf bot ──► moderation middleware ──► services ──► SQLite
+   │                       │                    │
+   │                       └──► OpenAI API      ├──► Excel/PDF reports
+   │                            (optional)      └──► Google Sheets/webhooks
+   ▼
+Express API ◄────────────────────────────── React admin panel
 ```
 
-### 2. Клонирование и установка
+- `src/middlewares/` применяет правила антиспама, captcha и flood control;
+- `src/services/` хранит пользователей, предупреждения и журналы модерации;
+- `src/commands/` содержит команды управления и отчётности;
+- `src/ai/` изолирует опциональную AI-интеграцию;
+- `backend/` предоставляет API для панели;
+- `frontend/` содержит React-приложение панели;
+- `api/` адаптирует HTTP-обработчики для serverless deployment.
+
+## Локальный запуск
+
+Требуются Node.js 20 и npm 10+.
 
 ```bash
-git clone <your-repo-url>
-cd telegram-moderator-bot
-
-# Установка зависимостей
+git clone https://github.com/Richbanker/antispamgazhbot.git
+cd antispamgazhbot
 npm install
-
-# Установка фронтенд зависимостей
-cd frontend
-npm install
-cd ..
-```
-
-### 3. Настройка окружения
-
-```bash
-# Копируем пример конфигурации
 cp .env.example .env
-
-# Редактируем .env
-nano .env
+npm run dev:bot
 ```
 
-**Обязательные параметры в `.env`:**
-
-```env
-# Telegram Bot Configuration
-BOT_TOKEN=your_telegram_bot_token_here
-WEBHOOK_URL=                              # Для продакшена
-PORT=3000
-
-# Database
-DATABASE_PATH=./database.sqlite
-
-# Admin settings
-ADMIN_IDS=123456789,987654321
-
-# AI Features (опционально)
-OPENAI_API_KEY=your_openai_key
-GEMINI_API_KEY=your_gemini_key
-
-# Integration (опционально)
-GOOGLE_SHEETS_ID=your_sheets_id
-WEBHOOK_NOTIFICATION_URL=your_webhook_url
-```
-
-### 4. Запуск в разработке
+Панель запускается отдельно:
 
 ```bash
-# Терминал 1: Запуск бота
-npm run dev:bot
-
-# Терминал 2: Запуск фронтенда
 cd frontend
+npm install
 npm run dev
 ```
 
-**Доступ:**
-- 🤖 **Бот**: Работает в Telegram (long polling)
-- 🖥️ **Панель**: http://localhost:5173
-- 🔗 **API**: http://localhost:3000
+## Переменные окружения
 
-## 🐳 Docker деплой
+Никогда не добавляйте реальные значения в git. Основные имена конфигурации:
 
-### Быстрый запуск одной командой
+- `BOT_TOKEN` — токен Telegram-бота;
+- `APP_BASE_URL`, `WEBHOOK_PATH`, `WEBHOOK_SECRET`, `WEBHOOK_URL` — webhook;
+- `PORT`, `NODE_ENV` — HTTP-сервер и режим запуска;
+- `DATABASE_URL` — подключение к хранилищу;
+- `USE_AI_ANTISPAM`, `AI_MODERATION`, `AI_API_KEY`, `AI_MODEL`, `AI_MODE` — AI-модерация;
+- `MAX_WARNINGS`, `MUTE_DURATION`, `WARN_LIMIT_MUTE`, `WARN_LIMIT_BAN` — санкции;
+- `GOOGLE_API_KEY`, `GOOGLE_SHEET_ID` — Google Sheets;
+- `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL` — внешние уведомления.
 
-```bash
-# Запуск всего стека
-docker-compose up -d
-
-# Просмотр логов
-docker-compose logs -f
-
-# Остановка
-docker-compose down
-```
-
-### Ручная сборка
+## Проверки
 
 ```bash
-# Сборка образа
-npm run docker:build
-
-# Запуск контейнера
-npm run docker:run
-
-# Просмотр логов
-docker logs telegram-bot -f
-
-# Остановка
-npm run docker:stop
-```
-
-### Продакшен с Nginx
-
-```bash
-# Запуск с reverse proxy
-docker-compose --profile production up -d
-
-# Доступ через Nginx
-# http://localhost - фронтенд
-# http://localhost/bot - webhook для бота
-# http://localhost/api - API эндпоинты
-```
-
-## 🌐 Продакшен деплой
-
-### VPS деплой с PM2
-
-#### 1. Подготовка сервера
-
-```bash
-# Обновление системы (Ubuntu/Debian)
-sudo apt update && sudo apt upgrade -y
-
-# Установка Node.js 20
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# Установка PM2 глобально
-sudo npm install -g pm2
-
-# Установка Nginx
-sudo apt install nginx -y
-```
-
-#### 2. Деплой приложения
-
-```bash
-# Клонирование на сервер
-git clone <your-repo> /var/www/telegram-bot
-cd /var/www/telegram-bot
-
-# Установка зависимостей
-npm install
-cd frontend && npm install && cd ..
-
-# Сборка приложения
-npm run build
-cd frontend && npm run build && cd ..
-
-# Настройка .env для продакшена
-cp .env.example .env
-nano .env
-```
-
-**Продакшен `.env`:**
-
-```env
-BOT_TOKEN=your_real_bot_token
-WEBHOOK_URL=https://yourdomain.com/bot
-PORT=3000
-NODE_ENV=production
-DATABASE_PATH=/var/www/telegram-bot/data/database.sqlite
-```
-
-#### 3. Запуск с PM2
-
-```bash
-# Создание директорий
-mkdir -p logs data
-
-# Запуск бота
-npm run start:pm2
-
-# Проверка статуса
-pm2 status
-
-# Просмотр логов
-npm run logs:pm2
-
-# Автозапуск при перезагрузке
-pm2 startup
-pm2 save
-```
-
-#### 4. Настройка Nginx
-
-```bash
-# Копирование конфигурации
-sudo cp nginx.conf /etc/nginx/sites-available/telegram-bot
-sudo ln -s /etc/nginx/sites-available/telegram-bot /etc/nginx/sites-enabled/
-
-# Копирование статики фронтенда
-sudo cp -r frontend/dist/* /var/www/html/
-
-# Перезапуск Nginx
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-### Webhook настройка
-
-#### 1. Получение SSL сертификата
-
-```bash
-# Установка Certbot
-sudo apt install certbot python3-certbot-nginx -y
-
-# Получение сертификата
-sudo certbot --nginx -d yourdomain.com
-
-# Автообновление
-sudo crontab -e
-# Добавить: 0 12 * * * /usr/bin/certbot renew --quiet
-```
-
-#### 2. Установка webhook
-
-```bash
-# Проверка webhook (замените на ваш домен и токен)
-curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
-     -H "Content-Type: application/json" \
-     -d '{"url": "https://yourdomain.com/bot"}'
-
-# Проверка статуса webhook
-curl "https://api.telegram.org/bot<BOT_TOKEN>/getWebhookInfo"
-```
-
-## 🔧 Управление
-
-### PM2 команды
-
-```bash
-# Статус процессов
-pm2 status
-
-# Перезапуск
-npm run restart:pm2
-
-# Остановка
-npm run stop:pm2
-
-# Мониторинг в реальном времени
-pm2 monit
-
-# Просмотр логов
-npm run logs:pm2
-```
-
-### Docker команды
-
-```bash
-# Просмотр контейнеров
-docker ps
-
-# Логи конкретного сервиса
-docker-compose logs bot -f
-
-# Перезапуск сервиса
-docker-compose restart bot
-
-# Обновление образов
-docker-compose pull && docker-compose up -d
-```
-
-### Обновление приложения
-
-```bash
-# Получение изменений
-git pull origin main
-
-# Установка новых зависимостей
-npm install
-cd frontend && npm install && cd ..
-
-# Пересборка
-npm run build
-cd frontend && npm run build && cd ..
-
-# Перезапуск
-npm run restart:pm2
-```
-
-## 🔍 Мониторинг и логи
-
-### Логи приложения
-
-```bash
-# PM2 логи
-tail -f logs/combined.log
-tail -f logs/err.log
-
-# Docker логи
-docker-compose logs -f bot
-```
-
-### Системный мониторинг
-
-```bash
-# Использование ресурсов
-pm2 monit
-
-# Статистика системы
-htop
-df -h
-free -h
-```
-
-### Health checks
-
-```bash
-# Проверка API
-curl http://localhost:3000/health
-
-# Проверка webhook
-curl https://yourdomain.com/health
-
-# Проверка фронтенда
-curl http://localhost:3001
-```
-
-## 🔧 Конфигурация
-
-### Переменные окружения
-
-Все настройки бота конфигурируются через файл `.env`:
-
-```env
-# Обязательные параметры
-BOT_TOKEN=your_telegram_bot_token_here    # Токен бота от @BotFather
-WEBHOOK_URL=https://yourdomain.com/bot    # Для webhook режима
-PORT=3000                                 # Порт сервера
-
-# База данных
-DATABASE_PATH=./database.sqlite           # Путь к файлу БД
-
-# Администраторы
-ADMIN_IDS=123456789,987654321            # ID админов через запятую
-
-# ИИ функции (опционально)
-OPENAI_API_KEY=your_openai_key           # Для ИИ анти-спам
-GEMINI_API_KEY=your_gemini_key           # Альтернативный ИИ
-
-# Интеграции (опционально)
-GOOGLE_SHEETS_ID=your_sheets_id          # Экспорт в Google Sheets
-WEBHOOK_NOTIFICATION_URL=your_webhook    # Уведомления
-```
-
-### Настройка функций
-
-Бот поддерживает гибкую настройку через конфигурационные файлы:
-
-- **Анти-спам**: Настройка фильтров и правил
-- **Роли пользователей**: Автоматическое повышение
-- **Лимиты**: Предупреждения, муты, баны
-- **Логирование**: Уровни детализации
-
-## 🛠️ Разработка
-
-### Структура проекта
-
-```
-telegram-moderator-bot/
-├── src/                    # Backend (Node.js + TypeScript)
-│   ├── bot.ts             # Основной файл бота
-│   ├── commands/          # Команды бота
-│   ├── middlewares/       # Middleware (анти-спам, флуд)
-│   ├── services/          # Сервисы (пользователи, логи)
-│   └── utils/             # Утилиты
-├── frontend/              # Frontend (React + Vite + Tailwind)
-│   ├── src/
-│   │   ├── pages/         # Страницы (Dashboard, Analytics, Users)
-│   │   └── components/    # Компоненты
-│   └── dist/              # Собранный фронтенд
-├── docker-compose.yml     # Docker конфигурация
-├── Dockerfile             # Docker образ
-├── ecosystem.config.js    # PM2 конфигурация
-└── nginx.conf            # Nginx конфигурация
-```
-
-### Добавление новых функций
-
-1. **Новая команда бота:**
-
-```typescript
-// src/commands/newcommand.ts
-import { Telegraf } from 'telegraf';
-
-export function newCommand(bot: Telegraf) {
-  bot.command('newcommand', async (ctx) => {
-    await ctx.reply('Новая команда работает!');
-  });
-}
-```
-
-2. **Новая страница фронтенда:**
-
-```tsx
-// frontend/src/pages/NewPage.tsx
-import React from 'react';
-
-export default function NewPage() {
-  return (
-    <div className="min-h-screen bg-black">
-      <h1 className="text-green-400">Новая страница</h1>
-    </div>
-  );
-}
-```
-
-### Тестирование
-
-```bash
-# Линтинг
 npm run lint
-
-# Форматирование
-npm run format
-
-# Тестирование бота локально
-npm run dev:bot
-
-# Тестирование фронтенда
-cd frontend && npm run dev
-```
-
-## 🆘 Устранение неисправностей
-
-### Частые проблемы
-
-#### 1. Бот не запускается
-
-```bash
-# Проверка токена
-echo $BOT_TOKEN
-
-# Проверка подключения к Telegram
-curl "https://api.telegram.org/bot$BOT_TOKEN/getMe"
-
-# Проверка логов
-npm run logs:pm2
-```
-
-#### 2. Webhook не работает
-
-```bash
-# Проверка SSL
-curl -I https://yourdomain.com/bot
-
-# Проверка webhook статуса
-curl "https://api.telegram.org/bot$BOT_TOKEN/getWebhookInfo"
-
-# Сброс webhook
-curl -X POST "https://api.telegram.org/bot$BOT_TOKEN/deleteWebhook"
-```
-
-#### 3. Фронтенд не загружается
-
-```bash
-# Проверка сборки
+npm run build
+cd frontend && npm run lint
 cd frontend && npm run build
-
-# Проверка Nginx
-sudo nginx -t
-sudo systemctl status nginx
-
-# Проверка портов
-netstat -tlnp | grep :80
 ```
 
-#### 4. База данных
+Автоматических unit- и integration-тестов в текущей версии нет: команда `npm test` выводит только сообщение-заглушку.
 
-```bash
-# Проверка файла БД
-ls -la database.sqlite
+Минимальный test plan:
 
-# Права доступа
-chmod 664 database.sqlite
-chown www-data:www-data database.sqlite
-```
+1. unit-тесты правил стоп-слов, flood control и расчёта предупреждений;
+2. integration-тесты middleware с mock Telegraf context;
+3. проверка webhook secret и административной авторизации;
+4. smoke-тест запуска bot/API без внешних интеграций;
+5. компонентные тесты критичных экранов панели.
 
-### Логи и диагностика
+## Deployment
 
-```bash
-# Системные логи
-journalctl -u nginx
-journalctl -f
+Репозиторий содержит Docker, Docker Compose, Nginx, PM2 и GitHub Actions. Перед deployment проверьте права Telegram-бота, HTTPS, webhook secret и переменные окружения. Workflow не должен содержать резервные токены или другие credentials в открытом виде.
 
-# PM2 логи
-pm2 logs --lines 100
+## Статус проекта
 
-# Docker логи
-docker-compose logs --tail=100
-```
+Pet project / технический showcase. Функциональность широкая, но перед production-использованием необходимы ротация всех когда-либо опубликованных credentials, автоматические тесты и дополнительная проверка административного API.
 
-## ⚠️ Важные настройки бота
+## Планы развития
 
-### 🔧 Настройка в @BotFather (ОБЯЗАТЕЛЬНО!)
-
-После создания бота обязательно настройте следующие параметры:
-
-1. **Отключите Group Privacy** (самая частая причина проблем!):
-   ```
-   1. Откройте @BotFather
-   2. Отправьте /mybots
-   3. Выберите вашего бота
-   4. Bot Settings → Group Privacy
-   5. Нажмите "Turn Off" (отключить)
-   ```
-   
-   **Без этой настройки бот НЕ будет видеть сообщения в группах!**
-
-2. **Настройте команды бота**:
-   ```
-   /setcommands
-   start - Запуск бота
-   help - Помощь
-   rules - Правила чата
-   stats - Статистика
-   settings - Настройки (админы)
-   ```
-
-### 👥 Настройка в группе
-
-1. **Добавьте бота в группу** как администратора
-2. **Предоставьте права**:
-   - ✅ Удалять сообщения
-   - ✅ Банить пользователей  
-   - ✅ Закреплять сообщения
-   - ✅ Добавлять участников
-
-## 🔍 Решение проблем
-
-### Бот не отвечает на команды
-
-**Проверьте по порядку:**
-
-1. **Group Privacy отключена?** (см. выше)
-2. **Бот администратор в группе?**
-3. **Webhook работает?**:
-   ```bash
-   node scripts/webhook-setup.js
-   # или запустите: ./test-bot-locally.ps1
-   ```
-
-4. **Проверьте логи**:
-   ```bash
-   # Vercel (если используете)
-   vercel logs
-   
-   # PM2
-   pm2 logs
-   
-   # Docker  
-   docker-compose logs bot
-   ```
-
-### Бот удаляет сообщения но не банит
-
-- Проверьте права администратора
-- Убедитесь, что `MAX_WARNINGS` настроен в `.env`
-
-### Команды работают только в личных сообщениях
-
-- **99% случаев**: Group Privacy включена в @BotFather
-- Решение: отключите как указано выше
-
-### ИИ модерация не работает
-
-- Проверьте наличие `OPENAI_API_KEY` в `.env`
-- Убедитесь что `AI_MODERATION=true`
-
-## 📞 Поддержка
-
-- 📧 **Email**: support@yourbot.com
-- 💬 **Telegram**: @YourBotSupport
-- 📖 **Документация**: https://docs.yourbot.com
-- 🐛 **Issues**: GitHub Issues
-- 🔧 **Диагностика**: Запустите `./test-bot-locally.ps1`
-
-## 📄 Лицензия
-
-MIT License - смотрите [LICENSE](LICENSE) файл для деталей.
-
----
-
-**Создано с ❤️ для Telegram сообществ** 
+- покрыть правила модерации и API тестами;
+- унифицировать конфигурацию bot, backend и serverless API;
+- добавить миграции схемы данных;
+- документировать модель доступа к панели;
+- настроить безопасное хранение deployment secrets.
