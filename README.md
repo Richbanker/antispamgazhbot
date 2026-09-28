@@ -1,5 +1,8 @@
 # 🤖 Telegram Moderator Bot
 
+
+[![Просмотры README](https://vbr.nathanchung.dev/badge?page_id=Richbanker.antispamgazhbot&text=README_Views)](https://github.com/Richbanker/antispamgazhbot)
+
 Продвинутый Telegram-бот для модерации чатов с ИИ-анализом спама и React-панелью управления.
 
 ## ✨ Возможности
